@@ -37,7 +37,7 @@ interface Enquiry {
   eventType: string;
   referralSource: string;
   message: string;
-  status: 'unread' | 'read';
+  status: 'unread' | 'read' | 'spam';
   createdAt: string;
 }
 
@@ -76,6 +76,7 @@ const AdminDashboard: React.FC = () => {
   const [videoUrl, setVideoUrl] = useState('');
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoPreview, setVideoPreview] = useState('');
+  const [messageFilter, setMessageFilter] = useState<'all' | 'unread' | 'spam'>('all');
 
   const markAsRead = async (id: string) => {
     try {
@@ -87,6 +88,22 @@ const AdminDashboard: React.FC = () => {
   const handleSelectEnquiry = (enq: Enquiry) => {
     setSelectedEnquiry(enq);
     if (enq.status === 'unread') markAsRead(enq._id);
+  };
+
+  const toggleSpam = async (enq: Enquiry) => {
+    const newStatus = enq.status === 'spam' ? 'unread' : 'spam';
+    try {
+      const res = await fetch(`${API}/enquiry/${enq._id}/spam`, {
+        method: 'PATCH',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+      if (res.ok) {
+        setEnquiries(prev => prev.map(e => e._id === enq._id ? { ...e, status: newStatus } : e));
+        setSelectedEnquiry(prev => prev?._id === enq._id ? { ...prev, status: newStatus } : prev);
+        showToast(newStatus === 'spam' ? 'Moved to Spam' : 'Moved to Inbox');
+      }
+    } catch (err) { showToast('Action failed'); }
   };
   const [toast, setToast] = useState('');
   const [deleteData, setDeleteData] = useState<{ id: string, type: 'blog' | 'enquiry' } | null>(null);
@@ -911,10 +928,10 @@ const AdminDashboard: React.FC = () => {
               </div>
 
               {!selectedEnquiry && (
-                 <div className="grid gap-4 sm:grid-cols-3 mb-8">
+                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
                    <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-200">
-                     <p className="text-xs uppercase tracking-[0.3em] text-gray-400 mb-3">Total Enquiries</p>
-                     <p className="text-4xl font-semibold text-[#013220]">{enquiries.length}</p>
+                     <p className="text-xs uppercase tracking-[0.3em] text-gray-400 mb-3">Total</p>
+                     <p className="text-4xl font-semibold text-[#013220]">{enquiries.filter(e => e.status !== 'spam').length}</p>
                    </div>
                    <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100">
                      <p className="text-xs uppercase tracking-[0.3em] text-gray-400 mb-3">Unread</p>
@@ -924,7 +941,28 @@ const AdminDashboard: React.FC = () => {
                      <p className="text-xs uppercase tracking-[0.3em] text-gray-400 mb-3">Replied/Read</p>
                      <p className="text-4xl font-semibold text-green-600">{enquiries.filter(e => e.status === 'read').length}</p>
                    </div>
+                   <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-red-100">
+                     <p className="text-xs uppercase tracking-[0.3em] text-gray-400 mb-3">Spam caught</p>
+                     <p className="text-4xl font-semibold text-red-500">{enquiries.filter(e => e.status === 'spam').length}</p>
+                   </div>
                  </div>
+              )}
+
+              {!selectedEnquiry && (
+                <div className="flex gap-2 mb-6">
+                  <button onClick={() => setMessageFilter('all')} 
+                    className={`px-5 py-2 rounded-xl text-[0.65rem] font-bold uppercase tracking-widest transition-all ${messageFilter === 'all' ? 'bg-[#013220] text-[#C5A059]' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'}`}>
+                    Inbox
+                  </button>
+                  <button onClick={() => setMessageFilter('unread')} 
+                    className={`px-5 py-2 rounded-xl text-[0.65rem] font-bold uppercase tracking-widest transition-all ${messageFilter === 'unread' ? 'bg-[#013220] text-[#C5A059]' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'}`}>
+                    Unread
+                  </button>
+                  <button onClick={() => setMessageFilter('spam')} 
+                    className={`px-5 py-2 rounded-xl text-[0.65rem] font-bold uppercase tracking-widest transition-all ${messageFilter === 'spam' ? 'bg-red-600 text-white' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'}`}>
+                    Spam
+                  </button>
+                </div>
               )}
 
               {loading ? (
@@ -933,22 +971,32 @@ const AdminDashboard: React.FC = () => {
                 </div>
               ) : !selectedEnquiry ? (
                 /* List View for Enquiries (Matching Blog List Style) */
-                enquiries.length === 0 ? (
+                enquiries.filter(enq => {
+                  if (messageFilter === 'unread') return enq.status === 'unread';
+                  if (messageFilter === 'spam') return enq.status === 'spam';
+                  return enq.status !== 'spam';
+                }).length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-64 text-gray-400 bg-white rounded-3xl border border-gray-100 shadow-sm">
                     <svg viewBox="0 0 24 24" className="w-12 h-12 mb-3 opacity-30" fill="none" stroke="currentColor" strokeWidth="1">
                       <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
                     </svg>
-                    <p className="text-sm font-medium">No enquiries yet.</p>
+                    <p className="text-sm font-medium">No {messageFilter === 'spam' ? 'spam' : 'enquiries'} here.</p>
                   </div>
                 ) : (
                   <div className="grid gap-4">
-                    {enquiries.map(enq => (
-                      <div key={enq._id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col sm:flex-row min-h-[120px]">
-                        <div className="w-full sm:w-24 h-24 sm:h-auto flex-shrink-0 bg-[#013220]/5 flex items-center justify-center">
-                           <div className="text-[#C5A059] font-bold text-xl uppercase">
-                              {enq.firstName[0]}{enq.lastName[0]}
-                           </div>
-                        </div>
+                    {enquiries
+                      .filter(enq => {
+                        if (messageFilter === 'unread') return enq.status === 'unread';
+                        if (messageFilter === 'spam') return enq.status === 'spam';
+                        return enq.status !== 'spam';
+                      })
+                      .map(enq => (
+                        <div key={enq._id} className={`bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col sm:flex-row min-h-[120px] ${enq.status === 'spam' ? 'opacity-75 grayscale-[0.5]' : ''}`}>
+                          <div className={`w-full sm:w-24 h-24 sm:h-auto flex-shrink-0 flex items-center justify-center ${enq.status === 'spam' ? 'bg-red-50' : 'bg-[#013220]/5'}`}>
+                             <div className={`font-bold text-xl uppercase ${enq.status === 'spam' ? 'text-red-300' : 'text-[#C5A059]'}`}>
+                                {enq.firstName[0]}{enq.lastName[0]}
+                             </div>
+                          </div>
                         <div className="flex-1 p-5 flex flex-col justify-between">
                           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
                              <div onClick={() => handleSelectEnquiry(enq)} className="cursor-pointer group">
@@ -1074,6 +1122,12 @@ const AdminDashboard: React.FC = () => {
                         >
                            Close Message
                         </button>
+                        <button 
+                            onClick={() => toggleSpam(selectedEnquiry)}
+                            className={`w-full py-3 rounded-xl text-xs font-bold transition-all uppercase tracking-widest ${selectedEnquiry.status === 'spam' ? 'bg-green-50 text-green-600 hover:bg-green-100' : 'bg-orange-50 text-orange-600 hover:bg-orange-100'}`}
+                         >
+                            {selectedEnquiry.status === 'spam' ? 'Not Spam (Move to Inbox)' : 'Mark as Spam'}
+                         </button>
                         <button 
                            onClick={() => setDeleteData({ id: selectedEnquiry._id, type: 'enquiry' })}
                            className="w-full py-3 bg-red-50 text-red-500 rounded-xl text-xs font-bold hover:bg-red-100 transition-all uppercase tracking-widest"
