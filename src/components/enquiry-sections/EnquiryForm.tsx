@@ -88,7 +88,7 @@ const EnquiryForm: React.FC = () => {
 
         {status.success && (
           <div className="mb-8 p-4 bg-green-50 text-green-700 border border-green-200 rounded-lg text-center animate-fade-in">
-             ✓ your message is send sucess fullly
+             ✓ your message has been sent successfully
           </div>
         )}
 

@@ -236,7 +236,7 @@ const AdminDashboard: React.FC = () => {
       const res = await fetch(`${API}/enquiry`, { headers: authHeaders() });
       if (res.status === 401) { logout(); return; }
       const data = await res.json();
-      setEnquiries(data || []);
+      setEnquiries(data.enquiries || []);
     } catch { showToast('Failed to load messages'); }
     finally { setLoading(false); }
   };
