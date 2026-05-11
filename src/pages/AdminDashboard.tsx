@@ -37,7 +37,7 @@ interface Enquiry {
   eventType: string;
   referralSource: string;
   message: string;
-  status: 'unread' | 'read' | 'spam';
+  status: 'unread' | 'read' | 'spam' | 'high-risk';
   createdAt: string;
 }
 
@@ -76,7 +76,7 @@ const AdminDashboard: React.FC = () => {
   const [videoUrl, setVideoUrl] = useState('');
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoPreview, setVideoPreview] = useState('');
-  const [messageFilter, setMessageFilter] = useState<'all' | 'unread' | 'spam'>('all');
+  const [messageFilter, setMessageFilter] = useState<'all' | 'unread' | 'spam' | 'high-risk'>('all');
 
   const markAsRead = async (id: string) => {
     try {
@@ -91,7 +91,7 @@ const AdminDashboard: React.FC = () => {
   };
 
   const toggleSpam = async (enq: Enquiry) => {
-    const newStatus = enq.status === 'spam' ? 'unread' : 'spam';
+    const newStatus = (enq.status === 'spam' || enq.status === 'high-risk') ? 'unread' : 'spam';
     try {
       const res = await fetch(`${API}/enquiry/${enq._id}/spam`, {
         method: 'PATCH',
@@ -937,13 +937,13 @@ const AdminDashboard: React.FC = () => {
                      <p className="text-xs uppercase tracking-[0.3em] text-gray-400 mb-3">Unread</p>
                      <p className="text-4xl font-semibold text-[#C5A059]">{enquiries.filter(e => e.status === 'unread').length}</p>
                    </div>
-                   <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-200">
-                     <p className="text-xs uppercase tracking-[0.3em] text-gray-400 mb-3">Replied/Read</p>
-                     <p className="text-4xl font-semibold text-green-600">{enquiries.filter(e => e.status === 'read').length}</p>
-                   </div>
                    <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-red-100">
                      <p className="text-xs uppercase tracking-[0.3em] text-gray-400 mb-3">Spam caught</p>
                      <p className="text-4xl font-semibold text-red-500">{enquiries.filter(e => e.status === 'spam').length}</p>
+                   </div>
+                   <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-orange-100">
+                     <p className="text-xs uppercase tracking-[0.3em] text-gray-400 mb-3">High Risk (Cyrillic)</p>
+                     <p className="text-4xl font-semibold text-orange-500">{enquiries.filter(e => e.status === 'high-risk').length}</p>
                    </div>
                  </div>
               )}
@@ -962,6 +962,10 @@ const AdminDashboard: React.FC = () => {
                     className={`px-5 py-2 rounded-xl text-[0.65rem] font-bold uppercase tracking-widest transition-all ${messageFilter === 'spam' ? 'bg-red-600 text-white' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'}`}>
                     Spam
                   </button>
+                  <button onClick={() => setMessageFilter('high-risk')} 
+                    className={`px-5 py-2 rounded-xl text-[0.65rem] font-bold uppercase tracking-widest transition-all ${messageFilter === 'high-risk' ? 'bg-orange-500 text-white' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'}`}>
+                    High Risk
+                  </button>
                 </div>
               )}
 
@@ -974,7 +978,8 @@ const AdminDashboard: React.FC = () => {
                 enquiries.filter(enq => {
                   if (messageFilter === 'unread') return enq.status === 'unread';
                   if (messageFilter === 'spam') return enq.status === 'spam';
-                  return enq.status !== 'spam';
+                  if (messageFilter === 'high-risk') return enq.status === 'high-risk';
+                  return enq.status !== 'spam' && enq.status !== 'high-risk';
                 }).length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-64 text-gray-400 bg-white rounded-3xl border border-gray-100 shadow-sm">
                     <svg viewBox="0 0 24 24" className="w-12 h-12 mb-3 opacity-30" fill="none" stroke="currentColor" strokeWidth="1">
@@ -988,12 +993,13 @@ const AdminDashboard: React.FC = () => {
                       .filter(enq => {
                         if (messageFilter === 'unread') return enq.status === 'unread';
                         if (messageFilter === 'spam') return enq.status === 'spam';
-                        return enq.status !== 'spam';
+                        if (messageFilter === 'high-risk') return enq.status === 'high-risk';
+                        return enq.status !== 'spam' && enq.status !== 'high-risk';
                       })
                       .map(enq => (
-                        <div key={enq._id} className={`bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col sm:flex-row min-h-[120px] ${enq.status === 'spam' ? 'opacity-75 grayscale-[0.5]' : ''}`}>
-                          <div className={`w-full sm:w-24 h-24 sm:h-auto flex-shrink-0 flex items-center justify-center ${enq.status === 'spam' ? 'bg-red-50' : 'bg-[#013220]/5'}`}>
-                             <div className={`font-bold text-xl uppercase ${enq.status === 'spam' ? 'text-red-300' : 'text-[#C5A059]'}`}>
+                        <div key={enq._id} className={`bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col sm:flex-row min-h-[120px] ${(enq.status === 'spam' || enq.status === 'high-risk') ? 'opacity-75 grayscale-[0.5]' : ''}`}>
+                          <div className={`w-full sm:w-24 h-24 sm:h-auto flex-shrink-0 flex items-center justify-center ${enq.status === 'spam' ? 'bg-red-50' : enq.status === 'high-risk' ? 'bg-orange-50' : 'bg-[#013220]/5'}`}>
+                             <div className={`font-bold text-xl uppercase ${enq.status === 'spam' ? 'text-red-300' : enq.status === 'high-risk' ? 'text-orange-300' : 'text-[#C5A059]'}`}>
                                 {enq.firstName[0]}{enq.lastName[0]}
                              </div>
                           </div>
@@ -1012,8 +1018,8 @@ const AdminDashboard: React.FC = () => {
                                    <span className="group-hover:text-[#C5A059]/80 transition-colors">{enq.email}</span> · {new Date(enq.createdAt).toLocaleDateString()}
                                 </p>
                              </div>
-                             <span className="text-[0.65rem] px-2.5 py-1 rounded-full bg-green-50 text-[#013220] font-bold uppercase tracking-wider">
-                                {enq.servicesRequired}
+                             <span className={`text-[0.65rem] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider ${enq.status === 'high-risk' ? 'bg-orange-100 text-orange-600' : 'bg-green-50 text-[#013220]'}`}>
+                                {enq.status === 'high-risk' ? 'High Risk' : enq.servicesRequired}
                              </span>
                           </div>
                           
@@ -1123,11 +1129,11 @@ const AdminDashboard: React.FC = () => {
                            Close Message
                         </button>
                         <button 
-                            onClick={() => toggleSpam(selectedEnquiry)}
-                            className={`w-full py-3 rounded-xl text-xs font-bold transition-all uppercase tracking-widest ${selectedEnquiry.status === 'spam' ? 'bg-green-50 text-green-600 hover:bg-green-100' : 'bg-orange-50 text-orange-600 hover:bg-orange-100'}`}
-                         >
-                            {selectedEnquiry.status === 'spam' ? 'Not Spam (Move to Inbox)' : 'Mark as Spam'}
-                         </button>
+                             onClick={() => toggleSpam(selectedEnquiry)}
+                             className={`w-full py-3 rounded-xl text-xs font-bold transition-all uppercase tracking-widest ${(selectedEnquiry.status === 'spam' || selectedEnquiry.status === 'high-risk') ? 'bg-green-50 text-green-600 hover:bg-green-100' : 'bg-orange-50 text-orange-600 hover:bg-orange-100'}`}
+                          >
+                             {(selectedEnquiry.status === 'spam' || selectedEnquiry.status === 'high-risk') ? 'Move to Inbox' : 'Mark as Spam'}
+                          </button>
                         <button 
                            onClick={() => setDeleteData({ id: selectedEnquiry._id, type: 'enquiry' })}
                            className="w-full py-3 bg-red-50 text-red-500 rounded-xl text-xs font-bold hover:bg-red-100 transition-all uppercase tracking-widest"

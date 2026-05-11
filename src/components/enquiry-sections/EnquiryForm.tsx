@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import { API } from '../../config';
 
+declare global {
+  interface Window {
+    turnstile: any;
+  }
+}
+
 const EnquiryForm: React.FC = () => {
   const [formData, setFormData] = useState({
     firstName: '',
@@ -23,6 +29,20 @@ const EnquiryForm: React.FC = () => {
     error: ''
   });
 
+  const [turnstileToken, setTurnstileToken] = useState<string>('');
+  const turnstileRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (window.turnstile && turnstileRef.current) {
+      window.turnstile.render(turnstileRef.current, {
+        sitekey: import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000AA', // Placeholder/Test key
+        callback: (token: string) => {
+          setTurnstileToken(token);
+        },
+      });
+    }
+  }, []);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -38,7 +58,10 @@ const EnquiryForm: React.FC = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          turnstileToken
+        }),
       });
 
       const data = await response.json();
@@ -261,6 +284,11 @@ const EnquiryForm: React.FC = () => {
               required
               className="w-full border border-[#C5A059] bg-white p-3 focus:outline-none resize-none"
             ></textarea>
+          </div>
+          
+          {/* Cloudflare Turnstile */}
+          <div className="col-span-12 flex justify-center mt-4">
+            <div ref={turnstileRef}></div>
           </div>
           
           {/* Submit Button */}
