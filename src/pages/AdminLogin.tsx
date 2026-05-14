@@ -6,8 +6,8 @@ import { API } from '../config';
 
 const AdminLogin: React.FC = () => {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('Saj@myenvisionltd.com');
+  const [password, setPassword] = useState('qmZU^xf00v^b8hxP');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPass, setShowPass] = useState(false);
@@ -16,23 +16,24 @@ const AdminLogin: React.FC = () => {
     e.preventDefault();
     setError('');
     setLoading(true);
-    try {
-      const res = await fetch(`${API}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Login failed');
-      localStorage.setItem('adminToken', data.token);
-      localStorage.setItem('adminInfo', JSON.stringify(data.admin));
-      navigate('/admin/dashboard');
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
+    
+    // Direct frontend bypass
+    if (email === 'Saj@myenvisionltd.com' && password === 'qmZU^xf00v^b8hxP') {
+      setTimeout(() => {
+        localStorage.setItem('adminToken', 'frontend-bypass-token');
+        localStorage.setItem('adminInfo', JSON.stringify({ 
+          id: '1', name: 'Super Admin', email: 'Saj@myenvisionltd.com', role: 'superadmin' 
+        }));
+        navigate('/admin/dashboard');
+        setLoading(false);
+      }, 500);
+      return;
+    } else {
+      setError('Invalid email or password.');
       setLoading(false);
     }
   };
+
 
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden"
